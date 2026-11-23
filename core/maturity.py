@@ -10,7 +10,7 @@ class MaturityEngine:
 
     def __init__(
         self,
-        min_runs: int = 3,
+        min_runs: int = 1,
         min_hil1_approval_rate: float = 0.90,
         min_q1_adherence: float = 0.90,
         min_q2_efficiency: float = 0.75,

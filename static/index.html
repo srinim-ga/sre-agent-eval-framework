@@ -27,6 +27,9 @@
       </div>
     </div>
     <div class="flex items-center space-x-4">
+      <button onclick="resetDemoState()" class="px-2.5 py-1.5 text-xs text-gray-400 hover:text-white bg-[#252530] hover:bg-[#323240] rounded-lg border azure-border transition flex items-center">
+        <i class="fa-solid fa-arrow-rotate-left mr-1.5"></i> Reset Demo State
+      </button>
       <div class="flex bg-[#121216] p-1 rounded-lg border azure-border text-xs">
         <button id="tab-incidents" onclick="switchTab('incidents')" class="px-3 py-1.5 rounded-md font-medium text-white bg-[#0078d4] transition">Incidents &amp; HIL</button>
         <button id="tab-maturity" onclick="switchTab('maturity')" class="px-3 py-1.5 rounded-md font-medium text-gray-400 hover:text-white transition">Autonomy &amp; Maturity Hub</button>
@@ -488,6 +491,19 @@
         loadIncidents();
       } catch (err) {
         alert("Failed to flip playbook mode.");
+      }
+    }
+
+    async function resetDemoState() {
+      try {
+        await fetch("/api/reset", { method: "POST" });
+        currentIncidentId = "ICM-501230";
+        loadIncidents();
+        if (activeTab === "maturity") {
+          loadMaturityData();
+        }
+      } catch (err) {
+        alert("Failed to reset state.");
       }
     }
 

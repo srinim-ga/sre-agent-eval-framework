@@ -195,5 +195,87 @@ def run_interactive_eval():
     print("=" * 70 + "\n")
 
 
+import argparse
+
+def run_batch_eval():
+    """Runs automated evaluation on all mock incidents and prints a summary scorecard."""
+    incidents = load_json("incidents.json")
+    plans = {p["plan_id"]: p for p in load_json("response_plans.json")}
+    traces = {t["incident_id"]: t for t in load_json("traces.json")}
+
+    q1_evaluator = PlanAdherenceEvaluator()
+    q2_evaluator = EfficiencyEvaluator()
+    maturity_engine = MaturityEngine(min_runs=1)
+
+    print_banner("BATCH EVALUATION RUNNER (ALL INCIDENTS)")
+    print(f"{'Incident ID':<12} | {'Service':<15} | {'HIL 1':<9} | {'Q1 Adhere':<10} | {'Q2 Effic':<10} | {'Outcome'}")
+    print("-" * 75)
+
+    eval_history = []
+    for inc in incidents:
+        inc_id = inc["incident_id"]
+        trace = traces.get(inc_id, {})
+        plan_id = trace.get("plan_id")
+        plan = plans.get(plan_id, {})
+
+        # Simulate HIL 1 based on safety
+        has_destructive = any(
+            ds.get("safety_level") == "destructive"
+            for ds in trace.get("drafted_plan", {}).get("drafted_steps", [])
+        )
+        if has_destructive:
+            decision = HIL1Decision(incident_id=inc_id, decision=HIL1DecisionType.DENY, reason="Destructive operation")
+            q1 = q1_evaluator(response_plan=plan, agent_trace=trace, hil1_decision=decision.model_dump())
+            q2 = q2_evaluator(agent_trace={"execution_steps": []}, baseline_steps_count=len(plan.get("steps", [])))
+            outcome = "Cancelled (HIL 1 Denied)"
+            hil1_str = "DENIED"
+        else:
+            decision = HIL1Decision(incident_id=inc_id, decision=HIL1DecisionType.APPROVE)
+            q1 = q1_evaluator(response_plan=plan, agent_trace=trace, hil1_decision=decision.model_dump())
+            q2 = q2_evaluator(agent_trace=trace, baseline_steps_count=len(plan.get("steps", [])))
+            outcome = "Mitigated"
+            hil1_str = "APPROVED"
+
+        q1_pct = f"{q1['q1_adherence_score'] * 100:.0f}%"
+        q2_pct = f"{q2['q2_efficiency_score'] * 100:.0f}%"
+        print(f"{inc_id:<12} | {inc['service']:<15} | {hil1_str:<9} | {q1_pct:<10} | {q2_pct:<10} | {outcome}")
+
+        eval_res = EvaluationResult(
+            incident_id=inc_id,
+            plan_id=plan_id,
+            q1=Q1AdherenceResult(
+                score=q1["q1_adherence_score"],
+                steps_completed=q1["steps_completed"],
+                steps_skipped=q1["steps_skipped"],
+                unauthorized_actions=q1["unauthorized_actions"],
+                rationale=q1["rationale"],
+            ),
+            q2=Q2EfficiencyResult(
+                score=q2["q2_efficiency_score"],
+                redundant_queries_count=q2["redundant_queries_count"],
+                action_density=q2["action_density"],
+                time_to_mitigate_rating=q2["time_to_mitigate_rating"],
+                rationale=q2["rationale"],
+            ),
+            composite_score=round((q1["q1_adherence_score"] * 0.6) + (q2["q2_efficiency_score"] * 0.4), 2),
+            hil1_decision=decision,
+        )
+        eval_history.append(eval_res)
+
+    print_banner("MATURITY & AUTONOMY SUMMARY")
+    for plan_id in plans:
+        assessment = maturity_engine.assess_playbook(plan_id, eval_history)
+        status = "READY FOR AUTONOMOUS" if assessment.maturity_met else "REVIEW ONLY"
+        print(f"• {plan_id:<25}: [{status}] - {assessment.recommendation_text}")
+    print("=" * 75 + "\n")
+
+
 if __name__ == "__main__":
-    run_interactive_eval()
+    parser = argparse.ArgumentParser(description="Azure SRE Agent HITL Evaluation Framework CLI")
+    parser.add_argument("--all", action="store_true", help="Run automated batch evaluation on all mock incidents")
+    args = parser.parse_args()
+
+    if args.all:
+        run_batch_eval()
+    else:
+        run_interactive_eval()

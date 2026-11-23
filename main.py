@@ -34,7 +34,7 @@ playbook_modes: Dict[str, str] = {}  # playbook_id -> "Review" | "Autonomous"
 
 q1_evaluator = PlanAdherenceEvaluator()
 q2_evaluator = EfficiencyEvaluator()
-maturity_engine = MaturityEngine(min_runs=2)
+maturity_engine = MaturityEngine(min_runs=1)
 
 
 def load_initial_data():
@@ -209,6 +209,16 @@ def flip_playbook_mode(playbook_id: str):
     playbook_modes[playbook_id] = new_mode
 
     return {"playbook_id": playbook_id, "new_mode": new_mode}
+
+
+@app.post("/api/reset")
+def reset_state():
+    """
+    Resets all incidents, evaluations, and playbook modes back to initial mock state.
+    """
+    evaluations_db.clear()
+    load_initial_data()
+    return {"status": "Reset completed successfully"}
 
 
 @app.get("/", response_class=HTMLResponse)
