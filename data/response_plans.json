@@ -1,0 +1,106 @@
+[
+  {
+    "plan_id": "OOM_RESTART_PLAYBOOK",
+    "name": "Kubernetes Container OOMKilled Remediation",
+    "service": "PaymentService",
+    "description": "Standard diagnostic and mitigation steps for pods crashing due to Out-Of-Memory (OOMKilled) limits.",
+    "steps": [
+      {
+        "step_number": 1,
+        "title": "Query Top Memory Consuming Pods",
+        "action_type": "diagnostic",
+        "command_template": "ContainerMetrics | where Service == '{service}' | top 5 by MemoryUsageMB desc",
+        "safety_level": "read_only",
+        "expected_outcome": "Identify specific pod exceeding 95% memory quota."
+      },
+      {
+        "step_number": 2,
+        "title": "Verify Pod Restart History",
+        "action_type": "diagnostic",
+        "command_template": "KubePodInventory | where PodName == '{pod}' | summarize Restarts=sum(RestartCount)",
+        "safety_level": "read_only",
+        "expected_outcome": "Confirm pod has crashed at least 3 times in the last 60 minutes."
+      },
+      {
+        "step_number": 3,
+        "title": "Gracefully Restart Crashing Pod",
+        "action_type": "mitigation",
+        "command_template": "kubectl delete pod {pod} --grace-period=30",
+        "safety_level": "impactful",
+        "expected_outcome": "Kubernetes ReplicaSet spawns fresh pod instance with clean memory footprint."
+      },
+      {
+        "step_number": 4,
+        "title": "Verify New Pod Health",
+        "action_type": "verification",
+        "command_template": "kubectl get pod -l app={service} -o jsonpath='{.items[*].status.phase}'",
+        "safety_level": "read_only",
+        "expected_outcome": "Status is Running with 0 Restarts."
+      }
+    ]
+  },
+  {
+    "plan_id": "DB_CONN_POOL_PLAYBOOK",
+    "name": "Database Connection Pool Saturation Recovery",
+    "service": "OrderDB",
+    "description": "Remediation playbook for connection starvation and queue timeout spikes.",
+    "steps": [
+      {
+        "step_number": 1,
+        "title": "Inspect Active and Idle DB Connections",
+        "action_type": "diagnostic",
+        "command_template": "AzureMetrics | where MetricName in ('ActiveConnections', 'IdleConnections')",
+        "safety_level": "read_only",
+        "expected_outcome": "Determine whether saturation is caused by hung idle sessions or burst traffic."
+      },
+      {
+        "step_number": 2,
+        "title": "Identify Top Blocking Queries",
+        "action_type": "diagnostic",
+        "command_template": "AzureDiagnostics | where Category == 'QueryStoreRuntimeStatistics' | top 5 by TotalDurationMs",
+        "safety_level": "read_only",
+        "expected_outcome": "Isolate slow running transactions holding connections open."
+      },
+      {
+        "step_number": 3,
+        "title": "Terminate Stale Idle Connections",
+        "action_type": "mitigation",
+        "command_template": "kill_idle_sessions(timeout_sec=300)",
+        "safety_level": "impactful",
+        "expected_outcome": "Free pool slots to allow active transactions to proceed."
+      }
+    ]
+  },
+  {
+    "plan_id": "CANARY_ROLLBACK_PLAYBOOK",
+    "name": "Canary Deployment Regression Rollback",
+    "service": "AuthService",
+    "description": "Safely rollback a failing canary release without dropping traffic.",
+    "steps": [
+      {
+        "step_number": 1,
+        "title": "Compare Canary vs Baseline Error Rate",
+        "action_type": "diagnostic",
+        "command_template": "Requests | summarize Canary5xx=countif(Track=='canary' and ResultCode>=500) by bin(TimeGenerated, 1m)",
+        "safety_level": "read_only",
+        "expected_outcome": "Verify canary error rate exceeds 5% threshold."
+      },
+      {
+        "step_number": 2,
+        "title": "Drain Canary Traffic to Baseline",
+        "action_type": "mitigation",
+        "command_template": "az network traffic-manager endpoint update --target-weight 0",
+        "safety_level": "impactful",
+        "expected_outcome": "100% of user requests routed to stable baseline."
+      },
+      {
+        "step_number": 3,
+        "title": "Rollback Deployment Revision",
+        "action_type": "mitigation",
+        "command_template": "helm rollback auth-service-release 1",
+        "safety_level": "impactful",
+        "expected_outcome": "Pods downgraded to previous verified image tag."
+      }
+    ]
+  }
+]

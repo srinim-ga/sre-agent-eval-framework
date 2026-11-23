@@ -1,0 +1,32 @@
+[
+  {
+    "incident_id": "ICM-501230",
+    "title": "PaymentService High Memory Spike & OOMKilled Alerts",
+    "severity": 2,
+    "service": "PaymentService",
+    "cluster": "prod-eastus-aks-01",
+    "alert_condition": "MemoryWorkingSetBytes > 95% threshold for > 5 minutes",
+    "fired_at": "2026-11-22T21:10:00Z",
+    "status": "Active"
+  },
+  {
+    "incident_id": "ICM-501231",
+    "title": "OrderDB Connection Pool Exhaustion Spike",
+    "severity": 3,
+    "service": "OrderDB",
+    "cluster": "prod-centralus-sql-02",
+    "alert_condition": "ConnectionPoolUsage > 98% and ConnectionTimeoutExceptions > 120/min",
+    "fired_at": "2026-11-22T21:20:00Z",
+    "status": "Active"
+  },
+  {
+    "incident_id": "ICM-501232",
+    "title": "AuthService Post-Deployment 500 Error Spike",
+    "severity": 2,
+    "service": "AuthService",
+    "cluster": "prod-westus2-aks-03",
+    "alert_condition": "HTTP 500 rate jumped from 0.01% to 8.4% after rollout v2.4.1",
+    "fired_at": "2026-11-22T21:30:00Z",
+    "status": "Active"
+  }
+]

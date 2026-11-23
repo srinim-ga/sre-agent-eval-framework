@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Azure SRE Agent - Evaluation & HITL Framework</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    .azure-blue { background-color: #0078d4; }
+    .azure-card { background-color: #1e1e24; border-color: #2d2d38; }
+    .azure-border { border-color: #2d2d38; }
+  </style>
+</head>
+<body class="bg-[#121216] text-gray-200 min-h-screen flex flex-col">
+
+  <!-- Top Navigation Header -->
+  <header class="bg-[#1a1a22] border-b azure-border px-6 py-4 flex items-center justify-between sticky top-0 z-50">
+    <div class="flex items-center space-x-3">
+      <div class="w-9 h-9 rounded bg-[#0078d4] flex items-center justify-center text-white shadow-md">
+        <i class="fa-solid fa-microchip"></i>
+      </div>
+      <div>
+        <h1 class="text-base font-semibold text-white tracking-wide">Azure SRE Agent <span class="text-xs bg-[#0078d4]/20 text-[#50a0f0] px-2 py-0.5 rounded border border-[#0078d4]/30 ml-1">HITL Eval Framework</span></h1>
+        <p class="text-xs text-gray-400">Response Plan Adherence (Q1) &amp; Trajectory Efficiency (Q2) Engine</p>
+      </div>
+    </div>
+    <div class="flex items-center space-x-4">
+      <div class="flex bg-[#121216] p-1 rounded-lg border azure-border text-xs">
+        <button id="tab-incidents" onclick="switchTab('incidents')" class="px-3 py-1.5 rounded-md font-medium text-white bg-[#0078d4] transition">Incidents &amp; HIL</button>
+        <button id="tab-maturity" onclick="switchTab('maturity')" class="px-3 py-1.5 rounded-md font-medium text-gray-400 hover:text-white transition">Autonomy &amp; Maturity Hub</button>
+      </div>
+      <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-950/60 text-emerald-400 border border-emerald-800">
+        <span class="w-2 h-2 mr-1.5 bg-emerald-400 rounded-full animate-pulse"></span>
+        Evaluation Engine Live
+      </span>
+    </div>
+  </header>
+
+  <!-- Main Content Area -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-6 space-y-6">
+
+    <!-- TAB 1: INCIDENTS & HIL WORKFLOW -->
+    <section id="view-incidents" class="grid grid-cols-12 gap-6">
+      
+      <!-- Left Column: Incidents List -->
+      <div class="col-span-12 lg:col-span-4 space-y-3">
+        <div class="flex items-center justify-between px-1">
+          <h2 class="text-sm font-semibold text-gray-300 uppercase tracking-wider">Active ICM Alerts</h2>
+          <span class="text-xs text-gray-400" id="inc-count">3 Mock Incidents</span>
+        </div>
+        <div id="incidents-list" class="space-y-2.5">
+          <!-- Loaded via JS -->
+          <div class="p-4 text-center text-gray-500 text-sm">Loading mock incidents...</div>
+        </div>
+      </div>
+
+      <!-- Right Column: Incident Inspection & HIL Gates -->
+      <div class="col-span-12 lg:col-span-8 space-y-5" id="incident-detail-panel">
+        <div class="p-8 text-center text-gray-500 azure-card rounded-xl border azure-border">
+          <i class="fa-solid fa-spinner fa-spin text-2xl mb-2 text-[#0078d4]"></i>
+          <p>Select an incident on the left to begin evaluation.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: MATURITY & AUTONOMY HUB -->
+    <section id="view-maturity" class="hidden space-y-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-lg font-semibold text-white">Playbook Autonomy &amp; Maturity Dashboard</h2>
+          <p class="text-xs text-gray-400">Rolling metrics determining when a playbook can safely flip from <span class="text-amber-400 font-mono">Review</span> to <span class="text-emerald-400 font-mono">Autonomous</span> mode.</p>
+        </div>
+        <button onclick="loadMaturityData()" class="px-3 py-1.5 bg-[#252530] hover:bg-[#323240] text-xs text-gray-200 rounded-lg border azure-border">
+          <i class="fa-solid fa-rotate-right mr-1"></i> Refresh Metrics
+        </button>
+      </div>
+
+      <div id="maturity-grid" class="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <!-- Loaded via JS -->
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="bg-[#1a1a22] border-t azure-border py-3 px-6 text-center text-xs text-gray-500">
+    Azure SRE Agent Evaluation Prototype &bull; Standardized on Azure AI Foundry SDK Custom Evaluator Contracts
+  </footer>
+
+  <script>
+    let currentIncidentId = "ICM-501230";
+    let activeTab = "incidents";
+
+    function switchTab(tab) {
+      activeTab = tab;
+      if (tab === "incidents") {
+        document.getElementById("view-incidents").classList.remove("hidden");
+        document.getElementById("view-maturity").classList.add("hidden");
+        document.getElementById("tab-incidents").className = "px-3 py-1.5 rounded-md font-medium text-white bg-[#0078d4] transition";
+        document.getElementById("tab-maturity").className = "px-3 py-1.5 rounded-md font-medium text-gray-400 hover:text-white transition";
+      } else {
+        document.getElementById("view-incidents").classList.add("hidden");
+        document.getElementById("view-maturity").classList.remove("hidden");
+        document.getElementById("tab-maturity").className = "px-3 py-1.5 rounded-md font-medium text-white bg-[#0078d4] transition";
+        document.getElementById("tab-incidents").className = "px-3 py-1.5 rounded-md font-medium text-gray-400 hover:text-white transition";
+        loadMaturityData();
+      }
+    }
+
+    async function loadIncidents() {
+      try {
+        const res = await fetch("/api/incidents");
+        const list = await res.json();
+        const container = document.getElementById("incidents-list");
+        container.innerHTML = "";
+
+        list.forEach(item => {
+          const inc = item.incident;
+          const isSelected = inc.incident_id === currentIncidentId;
+          const sevColor = inc.severity === 2 ? "bg-red-950/60 text-red-400 border-red-800" : "bg-amber-950/60 text-amber-400 border-amber-800";
+          const statusColor = inc.status === "Mitigated" ? "text-emerald-400" : inc.status === "Cancelled" ? "text-rose-400" : "text-sky-400";
+
+          const card = document.createElement("div");
+          card.className = `p-3.5 rounded-xl border cursor-pointer transition ${isSelected ? 'bg-[#252532] border-[#0078d4]' : 'azure-card azure-border hover:border-gray-600'}`;
+          card.onclick = () => selectIncident(inc.incident_id);
+
+          card.innerHTML = `
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="text-xs font-mono font-bold text-gray-200">${inc.incident_id}</span>
+              <span class="text-[11px] px-2 py-0.5 rounded-full border ${sevColor} font-semibold">Sev ${inc.severity}</span>
+            </div>
+            <p class="text-xs font-medium text-gray-300 line-clamp-2 mb-2">${inc.title}</p>
+            <div class="flex items-center justify-between text-[11px] text-gray-400 pt-2 border-t border-gray-800/80">
+              <span class="flex items-center"><i class="fa-solid fa-server mr-1 text-gray-500"></i> ${inc.service}</span>
+              <span class="font-medium ${statusColor}">${inc.status}</span>
+            </div>
+          `;
+          container.appendChild(card);
+        });
+
+        loadIncidentDetail(currentIncidentId);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    function selectIncident(id) {
+      currentIncidentId = id;
+      loadIncidents();
+    }
+
+    async function loadIncidentDetail(id) {
+      const panel = document.getElementById("incident-detail-panel");
+      panel.innerHTML = `<div class="p-8 text-center text-gray-500"><i class="fa-solid fa-spinner fa-spin text-2xl text-[#0078d4]"></i></div>`;
+
+      try {
+        const res = await fetch(`/api/incidents/${id}`);
+        const data = await res.json();
+        const inc = data.incident;
+        const plan = data.response_plan;
+        const trace = data.trace;
+        const evaluation = data.evaluation;
+        const mode = data.current_playbook_mode;
+
+        let html = `
+          <!-- Incident Header Card -->
+          <div class="azure-card p-5 rounded-xl border azure-border">
+            <div class="flex items-start justify-between">
+              <div>
+                <div class="flex items-center space-x-2 mb-1">
+                  <span class="text-xs font-mono bg-blue-950/60 text-blue-400 px-2 py-0.5 rounded border border-blue-800">${inc.incident_id}</span>
+                  <span class="text-xs text-gray-400"><i class="fa-solid fa-clock mr-1"></i> Fired at ${inc.fired_at}</span>
+                  <span class="text-xs px-2 py-0.5 rounded border ${mode === 'Autonomous' ? 'bg-emerald-950 text-emerald-400 border-emerald-800' : 'bg-purple-950 text-purple-400 border-purple-800'} font-medium">Mode: ${mode}</span>
+                </div>
+                <h2 class="text-base font-semibold text-white">${inc.title}</h2>
+                <p class="text-xs text-gray-400 mt-1"><i class="fa-solid fa-triangle-exclamation text-amber-500 mr-1"></i> Alert: ${inc.alert_condition}</p>
+              </div>
+              <div class="text-right">
+                <span class="text-xs font-semibold uppercase px-2.5 py-1 rounded ${inc.status === 'Mitigated' ? 'bg-emerald-900/60 text-emerald-300 border border-emerald-700' : inc.status === 'Cancelled' ? 'bg-rose-900/60 text-rose-300 border border-rose-700' : 'bg-sky-900/60 text-sky-300 border border-sky-700'}">${inc.status}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Response Plan & Drafted Plan Grid -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            
+            <!-- Prescribed Response Plan -->
+            <div class="azure-card p-4 rounded-xl border azure-border">
+              <h3 class="text-xs font-semibold text-[#50a0f0] uppercase tracking-wide mb-3 flex items-center">
+                <i class="fa-solid fa-book-bookmark mr-1.5"></i> Prescribed Response Plan (${plan.plan_id})
+              </h3>
+              <div class="space-y-2">
+                ${plan.steps.map(s => `
+                  <div class="p-2.5 bg-[#16161d] rounded-lg border border-gray-800 text-xs">
+                    <div class="flex items-center justify-between text-gray-300 font-medium mb-1">
+                      <span>Step ${s.step_number}: ${s.title}</span>
+                      <span class="text-[10px] uppercase px-1.5 py-0.5 rounded ${s.safety_level === 'read_only' ? 'bg-gray-800 text-gray-400' : 'bg-amber-950 text-amber-400'}">${s.safety_level}</span>
+                    </div>
+                    <code class="text-[11px] text-gray-400 font-mono block break-all bg-black/40 p-1 rounded">${s.command_template}</code>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+
+            <!-- Agent Drafted Execution Plan -->
+            <div class="azure-card p-4 rounded-xl border azure-border">
+              <h3 class="text-xs font-semibold text-emerald-400 uppercase tracking-wide mb-3 flex items-center">
+                <i class="fa-solid fa-robot mr-1.5"></i> Process A: Drafted Execution Plan
+              </h3>
+              <div class="p-2.5 bg-[#16161d] rounded-lg border border-gray-800 text-xs mb-3">
+                <p class="text-gray-300 font-medium mb-0.5">Rationale:</p>
+                <p class="text-gray-400">${trace.drafted_plan.rationale}</p>
+                <p class="text-gray-300 font-medium mt-2 mb-0.5">Risk Assessment:</p>
+                <p class="text-amber-400">${trace.drafted_plan.risk_assessment}</p>
+              </div>
+              <div class="space-y-1.5">
+                ${trace.drafted_plan.drafted_steps.map(ds => `
+                  <div class="p-2 bg-[#16161d] rounded border border-gray-800 text-xs flex items-center justify-between">
+                    <div>
+                      <span class="font-mono text-[#50a0f0]">Step ${ds.step_number}:</span>
+                      <span class="text-gray-200 font-medium ml-1">${ds.tool}</span>
+                      <span class="text-gray-400 block text-[11px]">${ds.intent}</span>
+                    </div>
+                    <span class="text-[10px] px-1.5 py-0.5 rounded font-mono ${ds.safety_level === 'destructive' ? 'bg-red-950 text-red-400 border border-red-800' : ds.safety_level === 'impactful' ? 'bg-amber-950 text-amber-400' : 'bg-gray-800 text-gray-400'}">${ds.safety_level}</span>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+        `;
+
+        // HIL ACTION 1 (Pre-execution Gate)
+        if (!evaluation || !evaluation.hil1_decision) {
+          html += `
+            <div class="bg-gradient-to-r from-blue-950/40 via-purple-950/40 to-blue-950/40 border border-purple-800/60 p-5 rounded-xl shadow-lg">
+              <div class="flex items-center space-x-2 text-purple-300 font-semibold text-sm mb-2">
+                <i class="fa-solid fa-user-shield text-base"></i>
+                <span>HIL Action 1: Pre-Execution Approval Gate</span>
+              </div>
+              <p class="text-xs text-gray-300 mb-4">Does the agent's drafted execution plan strictly adhere to the Response Plan and infrastructure safety policies?</p>
+              
+              <div class="flex flex-col sm:flex-row gap-3">
+                <input type="text" id="hil1-reason" placeholder="Optional reason/notes for decision..." class="flex-1 bg-[#121216] border border-gray-700 px-3 py-2 rounded-lg text-xs text-white placeholder-gray-500 focus:outline-none focus:border-[#0078d4]">
+                <div class="flex space-x-2">
+                  <button onclick="submitHIL1('${id}', 'Approve')" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs rounded-lg shadow transition flex items-center">
+                    <i class="fa-solid fa-check mr-1.5"></i> Approve &amp; Execute
+                  </button>
+                  <button onclick="submitHIL1('${id}', 'Deny')" class="px-5 py-2 bg-rose-700 hover:bg-rose-600 text-white font-medium text-xs rounded-lg shadow transition flex items-center">
+                    <i class="fa-solid fa-xmark mr-1.5"></i> Deny &amp; Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          `;
+        } else {
+          // Already decided HIL 1
+          const dec = evaluation.hil1_decision;
+          html += `
+            <div class="p-3.5 rounded-xl border ${dec.decision === 'Approve' ? 'bg-emerald-950/40 border-emerald-800 text-emerald-300' : 'bg-rose-950/40 border-rose-800 text-rose-300'} text-xs flex items-center justify-between">
+              <div class="flex items-center space-x-2">
+                <i class="fa-solid ${dec.decision === 'Approve' ? 'fa-circle-check text-emerald-400' : 'fa-circle-xmark text-rose-400'} text-base"></i>
+                <div>
+                  <span class="font-semibold uppercase tracking-wider">HIL Action 1: ${dec.decision}d</span>
+                  <span class="text-gray-400 ml-2">by ${dec.reviewer} &bull; ${dec.reason || 'No notes provided'}</span>
+                </div>
+              </div>
+              <span class="font-mono text-gray-500">${dec.decided_at.slice(11,19)}</span>
+            </div>
+          `;
+        }
+
+        // EXECUTION TRACE
+        if (trace.execution_steps && trace.execution_steps.length > 0) {
+          html += `
+            <div class="azure-card p-4 rounded-xl border azure-border">
+              <h3 class="text-xs font-semibold text-gray-300 uppercase tracking-wide mb-3 flex items-center justify-between">
+                <span><i class="fa-solid fa-terminal mr-1.5 text-gray-500"></i> Agent Execution Trace (Telemetry)</span>
+                <span class="text-gray-400 font-mono text-[11px]">${trace.execution_steps.length} actions &bull; ${trace.total_duration_seconds}s</span>
+              </h3>
+              <div class="space-y-2">
+                ${trace.execution_steps.map(ex => `
+                  <div class="p-2.5 bg-[#16161d] rounded-lg border border-gray-800 text-xs">
+                    <div class="flex items-center justify-between text-gray-300 font-medium mb-1">
+                      <span class="font-mono text-[#50a0f0]">Step ${ex.step_number}: ${ex.tool}</span>
+                      <span class="text-[10px] font-mono text-gray-400">${ex.duration_ms}ms</span>
+                    </div>
+                    <code class="text-[11px] text-gray-300 font-mono block bg-black/50 p-1.5 rounded mb-1">${ex.command_or_query}</code>
+                    <p class="text-[11px] text-gray-400"><span class="text-gray-500 font-medium">Output:</span> ${ex.tool_output}</p>
+                    <p class="text-[11px] text-[#50a0f0]/90 mt-1 italic"><i class="fa-solid fa-brain text-[10px] mr-1"></i> "${ex.agent_thought}"</p>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          `;
+        }
+
+        // EVALUATION SCORECARDS (Q1 & Q2)
+        if (evaluation) {
+          const q1 = evaluation.q1;
+          const q2 = evaluation.q2;
+          const q1Color = q1.score >= 0.9 ? 'text-emerald-400' : q1.score >= 0.7 ? 'text-amber-400' : 'text-rose-400';
+          const q2Color = q2.score >= 0.8 ? 'text-emerald-400' : q2.score >= 0.6 ? 'text-amber-400' : 'text-rose-400';
+
+          html += `
+            <div class="azure-card p-5 rounded-xl border azure-border">
+              <h3 class="text-xs font-semibold text-gray-300 uppercase tracking-wide mb-4 flex items-center">
+                <i class="fa-solid fa-chart-line mr-1.5 text-[#0078d4]"></i> Automated Evaluator Scorecard (Q1 &amp; Q2)
+              </h3>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                
+                <!-- Q1 Score -->
+                <div class="p-4 bg-[#16161d] rounded-xl border border-gray-800">
+                  <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-medium text-gray-300">Q1: Plan Adherence &amp; Safety</span>
+                    <span class="text-xl font-bold font-mono ${q1Color}">${(q1.score * 100).toFixed(0)}%</span>
+                  </div>
+                  <div class="w-full bg-gray-800 h-2 rounded-full overflow-hidden mb-3">
+                    <div class="bg-[#0078d4] h-full" style="width: ${q1.score * 100}%"></div>
+                  </div>
+                  <p class="text-xs text-gray-400 mb-2">${q1.rationale}</p>
+                  <div class="text-[11px] text-gray-500">
+                    <span>Completed Steps: [${q1.steps_completed.join(', ')}]</span> &bull; 
+                    <span>Skipped: [${q1.steps_skipped.join(', ') || 'None'}]</span>
+                  </div>
+                  ${q1.unauthorized_actions.length > 0 ? `
+                    <div class="mt-2 p-2 bg-red-950/40 border border-red-800 rounded text-red-400 text-[11px]">
+                      ⚠️ <strong>Safety Alert:</strong> ${q1.unauthorized_actions.join('; ')}
+                    </div>
+                  ` : ''}
+                </div>
+
+                <!-- Q2 Score -->
+                <div class="p-4 bg-[#16161d] rounded-xl border border-gray-800">
+                  <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-medium text-gray-300">Q2: Trajectory &amp; Efficiency</span>
+                    <span class="text-xl font-bold font-mono ${q2Color}">${(q2.score * 100).toFixed(0)}%</span>
+                  </div>
+                  <div class="w-full bg-gray-800 h-2 rounded-full overflow-hidden mb-3">
+                    <div class="bg-emerald-500 h-full" style="width: ${q2.score * 100}%"></div>
+                  </div>
+                  <p class="text-xs text-gray-400 mb-2">${q2.rationale}</p>
+                  <div class="flex items-center justify-between text-[11px] text-gray-500">
+                    <span>Redundancies/Errors: <strong class="text-gray-300">${q2.redundant_queries_count}</strong></span>
+                    <span>Action Density: <strong class="text-gray-300">${q2.action_density}</strong></span>
+                    <span>Speed: <strong class="text-gray-300">${q2.time_to_mitigate_rating}</strong></span>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- HIL ACTION 2 (Post-Execution Efficiency Rating) -->
+            <div class="azure-card p-4 rounded-xl border azure-border">
+              <h3 class="text-xs font-semibold text-amber-400 uppercase tracking-wide mb-2 flex items-center">
+                <i class="fa-solid fa-star mr-1.5"></i> HIL Action 2: Human Efficiency Review
+              </h3>
+              ${evaluation.hil2_feedback ? `
+                <div class="p-3 bg-amber-950/30 border border-amber-900/60 rounded-lg text-xs text-gray-300 flex items-center justify-between">
+                  <div>
+                    <span class="font-bold text-amber-400">${'★'.repeat(evaluation.hil2_feedback.efficiency_rating)}${'☆'.repeat(5 - evaluation.hil2_feedback.efficiency_rating)}</span>
+                    <span class="ml-2 font-medium">Rating: ${evaluation.hil2_feedback.efficiency_rating}/5</span>
+                    <p class="text-gray-400 mt-1">${evaluation.hil2_feedback.notes || 'No observation notes logged.'}</p>
+                  </div>
+                  <span class="text-[11px] text-gray-500">Reviewed by ${evaluation.hil2_feedback.reviewer}</span>
+                </div>
+              ` : `
+                <div class="flex flex-col sm:flex-row items-center gap-3">
+                  <div class="flex items-center space-x-1 text-amber-400 text-lg cursor-pointer" id="star-rating">
+                    <button onclick="submitHIL2('${id}', 1)" class="hover:scale-125 transition">★</button>
+                    <button onclick="submitHIL2('${id}', 2)" class="hover:scale-125 transition">★</button>
+                    <button onclick="submitHIL2('${id}', 3)" class="hover:scale-125 transition">★</button>
+                    <button onclick="submitHIL2('${id}', 4)" class="hover:scale-125 transition">★</button>
+                    <button onclick="submitHIL2('${id}', 5)" class="hover:scale-125 transition">★</button>
+                  </div>
+                  <input type="text" id="hil2-notes" placeholder="Optional SRE observation notes on efficiency..." class="flex-1 bg-[#121216] border border-gray-700 px-3 py-1.5 rounded-lg text-xs text-white placeholder-gray-500 focus:outline-none">
+                  <span class="text-xs text-gray-500">(Click a star to submit rating)</span>
+                </div>
+              `}
+            </div>
+          `;
+        }
+
+        panel.innerHTML = html;
+      } catch (err) {
+        console.error(err);
+        panel.innerHTML = `<div class="p-8 text-center text-red-400">Failed to load incident detail.</div>`;
+      }
+    }
+
+    async function submitHIL1(id, decision) {
+      const reason = document.getElementById("hil1-reason") ? document.getElementById("hil1-reason").value : "";
+      try {
+        await fetch(`/api/incidents/${id}/hil1`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ decision, reason, reviewer: "sre-oncall@microsoft.com" })
+        });
+        loadIncidents();
+      } catch (err) {
+        alert("Failed to submit approval decision.");
+      }
+    }
+
+    async function submitHIL2(id, rating) {
+      const notes = document.getElementById("hil2-notes") ? document.getElementById("hil2-notes").value : "";
+      try {
+        await fetch(`/api/incidents/${id}/hil2`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ rating, notes, reviewer: "sre-oncall@microsoft.com" })
+        });
+        loadIncidentDetail(id);
+      } catch (err) {
+        alert("Failed to submit efficiency rating.");
+      }
+    }
+
+    async function loadMaturityData() {
+      const grid = document.getElementById("maturity-grid");
+      grid.innerHTML = `<div class="col-span-3 text-center text-gray-500 p-8"><i class="fa-solid fa-spinner fa-spin text-2xl text-[#0078d4]"></i></div>`;
+
+      try {
+        const res = await fetch("/api/maturity");
+        const list = await res.json();
+        grid.innerHTML = "";
+
+        list.forEach(item => {
+          const isAutonomous = item.current_mode === "Autonomous";
+          const card = document.createElement("div");
+          card.className = "azure-card p-5 rounded-xl border azure-border space-y-4 flex flex-col justify-between";
+
+          card.innerHTML = `
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-mono font-bold text-[#50a0f0]">${item.playbook_id}</span>
+                <span class="text-xs font-semibold px-2 py-0.5 rounded border ${isAutonomous ? 'bg-emerald-950 text-emerald-400 border-emerald-800' : 'bg-purple-950 text-purple-400 border-purple-800'}">${item.current_mode} Mode</span>
+              </div>
+              <h3 class="text-sm font-semibold text-white mb-3">Autonomy Readiness Scorecard</h3>
+
+              <div class="space-y-2 text-xs">
+                <div class="flex justify-between py-1 border-b border-gray-800">
+                  <span class="text-gray-400">Total Evaluated Runs:</span>
+                  <span class="font-mono font-medium text-gray-200">${item.total_runs}</span>
+                </div>
+                <div class="flex justify-between py-1 border-b border-gray-800">
+                  <span class="text-gray-400">HIL 1 Approval Rate:</span>
+                  <span class="font-mono font-medium ${item.hil1_approval_rate >= 0.9 ? 'text-emerald-400' : 'text-amber-400'}">${(item.hil1_approval_rate * 100).toFixed(0)}% (Target: &ge;90%)</span>
+                </div>
+                <div class="flex justify-between py-1 border-b border-gray-800">
+                  <span class="text-gray-400">Avg Plan Adherence (Q1):</span>
+                  <span class="font-mono font-medium ${item.avg_q1_adherence >= 0.9 ? 'text-emerald-400' : 'text-amber-400'}">${(item.avg_q1_adherence * 100).toFixed(0)}% (Target: &ge;90%)</span>
+                </div>
+                <div class="flex justify-between py-1 border-b border-gray-800">
+                  <span class="text-gray-400">Avg Efficiency (Q2):</span>
+                  <span class="font-mono font-medium ${item.avg_q2_efficiency >= 0.75 ? 'text-emerald-400' : 'text-amber-400'}">${(item.avg_q2_efficiency * 100).toFixed(0)}% (Target: &ge;75%)</span>
+                </div>
+                <div class="flex justify-between py-1 border-b border-gray-800">
+                  <span class="text-gray-400">Safety Record:</span>
+                  <span class="font-mono font-medium ${item.zero_safety_violations ? 'text-emerald-400' : 'text-red-400'}">${item.zero_safety_violations ? '0 Violations' : 'Violations Logged'}</span>
+                </div>
+              </div>
+
+              <div class="mt-4 p-3 rounded-lg bg-[#16161d] border border-gray-800 text-xs">
+                <p class="font-semibold text-gray-300 mb-1">Recommendation:</p>
+                <p class="text-gray-400 leading-relaxed">${item.recommendation_text}</p>
+              </div>
+            </div>
+
+            <div class="pt-3 border-t border-gray-800">
+              <button onclick="flipMode('${item.playbook_id}')" class="w-full py-2 px-3 rounded-lg text-xs font-semibold transition flex items-center justify-center space-x-1.5 ${item.maturity_met || isAutonomous ? 'bg-[#0078d4] hover:bg-[#106ebe] text-white shadow' : 'bg-gray-800 text-gray-500 cursor-not-allowed'}">
+                <i class="fa-solid fa-arrows-rotate"></i>
+                <span>${isAutonomous ? 'Revert to Review Mode' : 'Flip Review &rarr; Autonomous'}</span>
+              </button>
+            </div>
+          `;
+          grid.appendChild(card);
+        });
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    async function flipMode(playbookId) {
+      try {
+        await fetch(`/api/playbooks/${playbookId}/flip-mode`, { method: "POST" });
+        loadMaturityData();
+        loadIncidents();
+      } catch (err) {
+        alert("Failed to flip playbook mode.");
+      }
+    }
+
+    // Initialize
+    loadIncidents();
+  </script>
+</body>
+</html>

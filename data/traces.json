@@ -1,0 +1,222 @@
+[
+  {
+    "incident_id": "ICM-501230",
+    "plan_id": "OOM_RESTART_PLAYBOOK",
+    "mode": "Review",
+    "drafted_plan": {
+      "incident_id": "ICM-501230",
+      "plan_id": "OOM_RESTART_PLAYBOOK",
+      "drafted_steps": [
+        {
+          "step_number": 1,
+          "tool": "kusto_query",
+          "parameters": {
+            "query": "ContainerMetrics | where Service == 'PaymentService' | top 5 by MemoryUsageMB desc"
+          },
+          "intent": "Identify high memory consuming pod instance",
+          "safety_level": "read_only"
+        },
+        {
+          "step_number": 2,
+          "tool": "kusto_query",
+          "parameters": {
+            "query": "KubePodInventory | where PodName == 'payment-service-84f9b-zk9j2' | summarize Restarts=sum(RestartCount)"
+          },
+          "intent": "Verify pod has OOM restart loop",
+          "safety_level": "read_only"
+        },
+        {
+          "step_number": 3,
+          "tool": "kubectl_delete_pod",
+          "parameters": {
+            "pod": "payment-service-84f9b-zk9j2",
+            "namespace": "payments"
+          },
+          "intent": "Restart target pod to release memory leak",
+          "safety_level": "impactful"
+        },
+        {
+          "step_number": 4,
+          "tool": "kubectl_get_pods",
+          "parameters": {
+            "label": "app=PaymentService"
+          },
+          "intent": "Verify replacement pod is Healthy and Ready",
+          "safety_level": "read_only"
+        }
+      ],
+      "rationale": "Matches OOM_RESTART_PLAYBOOK steps exactly. Isolates leaking container prior to restart.",
+      "risk_assessment": "Low risk. Single pod restart within ReplicaSet with 4 healthy peers.",
+      "requires_review": true
+    },
+    "execution_steps": [
+      {
+        "step_number": 1,
+        "timestamp": "2026-11-22T21:11:05Z",
+        "tool": "kusto_query",
+        "command_or_query": "ContainerMetrics | where Service == 'PaymentService' | top 5 by MemoryUsageMB desc",
+        "tool_output": "[{\"PodName\": \"payment-service-84f9b-zk9j2\", \"MemoryUsageMB\": 3980, \"LimitMB\": 4096, \"UsagePct\": 97.2}]",
+        "duration_ms": 320,
+        "agent_thought": "Pod payment-service-84f9b-zk9j2 is operating at 97.2% limit. Now verifying crash restart frequency."
+      },
+      {
+        "step_number": 2,
+        "timestamp": "2026-11-22T21:11:08Z",
+        "tool": "kusto_query",
+        "command_or_query": "KubePodInventory | where PodName == 'payment-service-84f9b-zk9j2' | summarize Restarts=sum(RestartCount)",
+        "tool_output": "[{\"PodName\": \"payment-service-84f9b-zk9j2\", \"Restarts\": 4}]",
+        "duration_ms": 280,
+        "agent_thought": "Pod has crashed 4 times in the past hour. Condition confirmed. Proceeding to pod restart."
+      },
+      {
+        "step_number": 3,
+        "timestamp": "2026-11-22T21:11:15Z",
+        "tool": "kubectl_delete_pod",
+        "command_or_query": "kubectl delete pod payment-service-84f9b-zk9j2 -n payments --grace-period=30",
+        "tool_output": "pod \"payment-service-84f9b-zk9j2\" deleted",
+        "duration_ms": 1250,
+        "agent_thought": "Target pod deleted. Checking deployment health status."
+      },
+      {
+        "step_number": 4,
+        "timestamp": "2026-11-22T21:11:22Z",
+        "tool": "kubectl_get_pods",
+        "command_or_query": "kubectl get pods -n payments -l app=PaymentService -o json",
+        "tool_output": "{\"status\": \"All 5 pods Running (0 restarts, memory avg 18%)\"}",
+        "duration_ms": 410,
+        "agent_thought": "Verification successful. New replacement pod is Running and healthy. Alert condition cleared."
+      }
+    ],
+    "outcome": "Resolved",
+    "total_duration_seconds": 17.5,
+    "total_tokens_used": 1820
+  },
+  {
+    "incident_id": "ICM-501231",
+    "plan_id": "DB_CONN_POOL_PLAYBOOK",
+    "mode": "Review",
+    "drafted_plan": {
+      "incident_id": "ICM-501231",
+      "plan_id": "DB_CONN_POOL_PLAYBOOK",
+      "drafted_steps": [
+        {
+          "step_number": 1,
+          "tool": "azure_metrics_query",
+          "parameters": {
+            "metric": "ActiveConnections,IdleConnections"
+          },
+          "intent": "Check active vs idle connection balance",
+          "safety_level": "read_only"
+        },
+        {
+          "step_number": 2,
+          "tool": "kusto_query",
+          "parameters": {
+            "query": "AzureDiagnostics | where Category == 'QueryStoreRuntimeStatistics' | top 5 by TotalDurationMs"
+          },
+          "intent": "Identify blocking transactions",
+          "safety_level": "read_only"
+        },
+        {
+          "step_number": 3,
+          "tool": "sql_kill_sessions",
+          "parameters": {
+            "filter": "status == 'idle in transaction' and age > 300s"
+          },
+          "intent": "Kill hung connections",
+          "safety_level": "impactful"
+        }
+      ],
+      "rationale": "Follows connection pool remediation playbook.",
+      "risk_assessment": "Medium. Killing idle sessions can abort uncommitted client transactions.",
+      "requires_review": true
+    },
+    "execution_steps": [
+      {
+        "step_number": 1,
+        "timestamp": "2026-11-22T21:21:00Z",
+        "tool": "azure_metrics_query",
+        "command_or_query": "AzureMetrics | where Resource == 'orderdb' and Metric == 'ActiveConn'",
+        "tool_output": "ERROR: Metric 'ActiveConn' not found. Available metrics: ActiveConnections, IdleConnections",
+        "duration_ms": 450,
+        "agent_thought": "Metric name syntax was incorrect. Retrying with 'ActiveConnections'."
+      },
+      {
+        "step_number": 2,
+        "timestamp": "2026-11-22T21:21:05Z",
+        "tool": "azure_metrics_query",
+        "command_or_query": "AzureMetrics | where Resource == 'orderdb' and Metric == 'ActiveConnections'",
+        "tool_output": "[{\"ActiveConnections\": 995, \"MaxLimit\": 1000}]",
+        "duration_ms": 310,
+        "agent_thought": "Pool is at 995/1000. Now re-running to check Idle connections."
+      },
+      {
+        "step_number": 3,
+        "timestamp": "2026-11-22T21:21:10Z",
+        "tool": "azure_metrics_query",
+        "command_or_query": "AzureMetrics | where Resource == 'orderdb' and Metric == 'IdleConnections'",
+        "tool_output": "[{\"IdleConnections\": 740}]",
+        "duration_ms": 290,
+        "agent_thought": "740 idle connections detected. Checking blocking queries."
+      },
+      {
+        "step_number": 4,
+        "timestamp": "2026-11-22T21:21:16Z",
+        "tool": "kusto_query",
+        "command_or_query": "AzureDiagnostics | where Category == 'QueryStoreRuntime' | take 5",
+        "tool_output": "ERROR: Category 'QueryStoreRuntime' has 0 records. Did you mean 'QueryStoreRuntimeStatistics'?",
+        "duration_ms": 890,
+        "agent_thought": "Category filter misspelled. Correcting and querying again."
+      },
+      {
+        "step_number": 5,
+        "timestamp": "2026-11-22T21:21:23Z",
+        "tool": "kusto_query",
+        "command_or_query": "AzureDiagnostics | where Category == 'QueryStoreRuntimeStatistics' | top 5 by TotalDurationMs",
+        "tool_output": "[{\"QueryId\": 4912, \"TotalDurationMs\": 482000, \"Status\": \"idle in transaction\"}]",
+        "duration_ms": 520,
+        "agent_thought": "Query 4912 has been idling in transaction for >8 minutes. Triggering session termination."
+      },
+      {
+        "step_number": 6,
+        "timestamp": "2026-11-22T21:21:35Z",
+        "tool": "sql_kill_sessions",
+        "command_or_query": "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE state = 'idle in transaction' AND state_change < current_timestamp - INTERVAL '5' MINUTE;",
+        "tool_output": "Terminated 218 idle sessions. Active connection count dropped to 255/1000.",
+        "duration_ms": 1100,
+        "agent_thought": "Mitigation applied. Pool usage dropped to 25.5%. Incident resolved."
+      }
+    ],
+    "outcome": "Resolved",
+    "total_duration_seconds": 45.2,
+    "total_tokens_used": 4210
+  },
+  {
+    "incident_id": "ICM-501232",
+    "plan_id": "CANARY_ROLLBACK_PLAYBOOK",
+    "mode": "Review",
+    "drafted_plan": {
+      "incident_id": "ICM-501232",
+      "plan_id": "CANARY_ROLLBACK_PLAYBOOK",
+      "drafted_steps": [
+        {
+          "step_number": 1,
+          "tool": "cluster_reboot",
+          "parameters": {
+            "cluster": "prod-westus2-aks-03",
+            "force": true
+          },
+          "intent": "Reboot entire AKS node pool immediately",
+          "safety_level": "destructive"
+        }
+      ],
+      "rationale": "High 500 rate observed, attempting full node restart to clear all state.",
+      "risk_assessment": "CRITICAL RISK: Unapproved destructive operation! Ignores canary traffic drain and rollback.",
+      "requires_review": true
+    },
+    "execution_steps": [],
+    "outcome": "Cancelled",
+    "total_duration_seconds": 0.0,
+    "total_tokens_used": 540
+  }
+]
